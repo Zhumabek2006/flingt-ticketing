@@ -76,6 +76,10 @@
       .btn-danger:hover {
         background: #c82333;
       }
+      .btn:disabled {
+        cursor: not-allowed;
+        opacity: 0.65;
+      }
       table {
         width: 100%;
         border-collapse: collapse;
@@ -97,6 +101,10 @@
       }
       .status-inactive {
         color: #dc3545;
+        font-weight: bold;
+      }
+      .status-refunded {
+        color: #fd7e14; /* Orange color */
         font-weight: bold;
       }
       .hidden {
@@ -224,7 +232,6 @@
     </div>
 
     <div class="container">
-      <!-- Поиск рейсов -->
       <div class="section">
         <h2>Поиск рейсов</h2>
         <form id="searchForm">
@@ -262,13 +269,11 @@
         </form>
       </div>
 
-      <!-- Результаты поиска -->
       <div class="section hidden" id="searchResults">
         <h2>Найденные рейсы</h2>
         <div id="flightsList"></div>
       </div>
 
-      <!-- Мои билеты -->
       <div class="section">
         <h2>Мои билеты</h2>
         <div class="form-row">
@@ -331,7 +336,7 @@
           if (response.ok) {
             currentUser = await response.json();
             if (currentUser.role !== "regular") {
-              alert("Доступ запрещён. Требуются права обычного пользователя.");
+              alert("Доступ запрещен. Требуются права обычного пользователя.");
               window.location.href = "index.html";
               return;
             }
@@ -350,9 +355,6 @@
           console.error("Ошибка:", error);
           window.location.href = "login.html";
         }
-
-        // Загружаем билеты сразу после входа
-        loadMyTickets();
       };
 
       // Поиск рейсов
@@ -401,36 +403,36 @@
           const flightCard = document.createElement("div");
           flightCard.className = "flight-card";
           flightCard.innerHTML = `
-                <div class="flight-header">
-                    <div class="flight-route">${flight.departure_city} → ${flight.arrival_city}</div>
-                    <div class="flight-price">${flight.price} ₽</div>
-                </div>
-                <div class="flight-details">
-                    <div class="flight-info">
-                        <strong>Рейс</strong>
-                        <span>${flight.flight_number}</span>
+                    <div class="flight-header">
+                        <div class="flight-route">${flight.departure_city} → ${flight.arrival_city}</div>
+                        <div class="flight-price">${flight.price} ₽</div>
                     </div>
-                    <div class="flight-info">
-                        <strong>Время вылета</strong>
-                        <span>${flight.departure_time}</span>
+                    <div class="flight-details">
+                        <div class="flight-info">
+                            <strong>Рейс</strong>
+                            <span>${flight.flight_number}</span>
+                        </div>
+                        <div class="flight-info">
+                            <strong>Время вылета</strong>
+                            <span>${flight.departure_time}</span>
+                        </div>
+                        <div class="flight-info">
+                            <strong>Время прилета</strong>
+                            <span>${flight.arrival_time}</span>
+                        </div>
                     </div>
-                    <div class="flight-info">
-                        <strong>Время прилёта</strong>
-                        <span>${flight.arrival_time}</span>
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-success" onclick="buyTicket(${flight.id})">
+                            Купить билет за ${flight.price} ₽
+                        </button>
                     </div>
-                </div>
-                <div style="margin-top: 15px;">
-                    <button class="btn btn-success" onclick="buyTicket(${flight.id}, this)">
-                        Купить билет за ${flight.price} ₽
-                    </button>
-                </div>
-            `;
+                `;
           flightsList.appendChild(flightCard);
         });
       }
 
       // Покупка билета
-      async function buyTicket(flightId, btn) {
+      async function buyTicket(flightId) {
         const flight = searchResults.find((f) => f.id === flightId);
         if (!flight) {
           alert("Рейс не найден");
@@ -442,8 +444,6 @@
             `Подтвердить покупку билета на рейс ${flight.flight_number} за ${flight.price} ₽?`
           )
         ) {
-          btn.disabled = true;
-          btn.textContent = "Покупка...";
           try {
             const response = await fetch("http://localhost:8000/tickets", {
               method: "POST",
@@ -455,22 +455,11 @@
             });
             const data = await response.json();
             if (!response.ok) {
-              toast(
-                "Ошибка",
-                data.detail || "Не удалось купить билет",
-                "error"
-              );
-              btn.disabled = false;
-              btn.textContent = `Купить билет за ${flight.price} ₽`;
+              alert("Ошибка покупки: " + (data.detail || JSON.stringify(data)));
               return;
             }
-            toast(
-              "Успешно",
-              `Билет №${data.id} успешно забронирован`,
-              "success"
-            );
-
-            // Обновляем список рейсов и билетов
+            toast("Успешно", `Билет #${data.id} забронирован`, "success");
+            // Обновить список результатов (уменьшить доступные места)
             const refreshed = await fetch(
               `http://localhost:8000/flights?departure_city=${encodeURIComponent(
                 flight.departure_city
@@ -481,13 +470,9 @@
             const flights = await refreshed.json();
             searchResults = flights;
             displaySearchResults(flights);
-
-            await loadMyTickets();
           } catch (error) {
             console.error("Ошибка покупки:", error);
             toast("Ошибка", "Не удалось купить билет", "error");
-            btn.disabled = false;
-            btn.textContent = `Купить билет за ${flight.price} ₽`;
           }
         }
       }
@@ -501,16 +486,32 @@
             },
           });
           let tickets = await response.json();
-
+          // Применяем фильтры
           const statusFilter =
             document.getElementById("ticketFilterStatus").value;
           const dateFilter = document.getElementById("ticketFilterDate").value;
-          if (statusFilter)
+          if (statusFilter) {
             tickets = tickets.filter((t) => t.status === statusFilter);
-          if (dateFilter)
+          }
+          if (dateFilter) {
             tickets = tickets.filter((t) => t.date === dateFilter);
+          }
 
-          displayMyTickets(tickets);
+          displayMyTickets(
+            tickets.map((t) => ({
+              id: t.id,
+              flight_number: t.flight_number,
+              route: t.route,
+              date_time: `${t.date} ${t.time}`,
+              price: t.price,
+              status:
+                t.status === "active"
+                  ? "Активен"
+                  : t.status === "refunded"
+                  ? "Возврат"
+                  : "Отменен",
+            }))
+          );
           document.getElementById("myTickets").classList.remove("hidden");
         } catch (e) {
           console.error(e);
@@ -524,54 +525,48 @@
         tableBody.innerHTML = "";
 
         tickets.forEach((ticket) => {
-          const isCanceled =
-            ticket.status === "canceled" || ticket.status === "refunded";
-          let statusText = "";
+          const row = document.createElement("tr");
+          let statusClass = "";
           switch (ticket.status) {
-            case "active":
-              statusText = "Активен";
+            case "Активен":
+              statusClass = "status-active";
               break;
-            case "refunded":
-              statusText = "Возврат";
+            case "Возврат":
+              statusClass = "status-refunded";
               break;
-            case "canceled":
-              statusText = "Отменён";
+            case "Отменен":
+              statusClass = "status-inactive";
               break;
             default:
-              statusText = ticket.status;
+              statusClass = "";
           }
 
-          row = document.createElement("tr");
+          const isCancelable = ticket.status === "Активен";
+
           row.innerHTML = `
-                <td>${ticket.id}</td>
-                <td>${ticket.flight_number}</td>
-                <td>${ticket.route}</td>
-                <td>${ticket.date} ${ticket.time}</td>
-                <td>${ticket.price} ₽</td>
-                <td class="${
-                  ticket.status === "active"
-                    ? "status-active"
-                    : "status-inactive"
-                }">${statusText}</td>
-                <td>
-                    <button class="btn btn-danger" 
-                            onclick="cancelTicket(${ticket.id}, this)" 
-                            ${isCanceled ? "disabled" : ""}>
-                        ${isCanceled ? "Отменён" : "Отменить"}
-                    </button>
-                </td>
-            `;
+                    <td>${ticket.id}</td>
+                    <td>${ticket.flight_number}</td>
+                    <td>${ticket.route}</td>
+                    <td>${ticket.date_time}</td>
+                    <td>${ticket.price} ₽</td>
+                    <td class="${statusClass}">${ticket.status}</td>
+                    <td>
+                        <button 
+                            class="btn btn-danger" 
+                            onclick="cancelTicket(${ticket.id})"
+                            ${!isCancelable ? "disabled" : ""}
+                        >
+                            Отменить
+                        </button>
+                    </td>
+                `;
           tableBody.appendChild(row);
         });
       }
 
       // Отмена билета
-      async function cancelTicket(ticketId, btn) {
+      async function cancelTicket(ticketId) {
         if (!confirm("Вы уверены, что хотите отменить этот билет?")) return;
-
-        btn.disabled = true;
-        btn.textContent = "Отмена...";
-
         try {
           const response = await fetch(
             `http://localhost:8000/tickets/${ticketId}/cancel`,
@@ -582,7 +577,6 @@
               },
             }
           );
-
           if (!response.ok) {
             const err = await response.json();
             toast(
@@ -590,25 +584,13 @@
               "Не удалось отменить билет: " + (err.detail || "ошибка"),
               "error"
             );
-            btn.disabled = false;
-            btn.textContent = "Отменить";
             return;
           }
-
-          toast(
-            "Готово",
-            "Билет успешно отменён и оформлен возврат",
-            "success"
-          );
-          btn.textContent = "Отменён";
-          btn.disabled = true;
-
-          await loadMyTickets();
+          toast("Готово", "Билет отменён и оформлен возврат", "success");
+          loadMyTickets();
         } catch (error) {
           console.error("Ошибка отмены:", error);
-          toast("Ошибка", "Не удалось отменить билет", "error");
-          btn.disabled = false;
-          btn.textContent = "Отменить";
+          toast("Ошибка", "Ошибка при отмене билета", "error");
         }
       }
 
@@ -618,7 +600,7 @@
         window.location.href = "index.html";
       }
 
-      // Всплывающие уведомления (toast)
+      // Toast helper
       function toast(title, message, type = "success") {
         const container = document.getElementById("toastContainer");
         const el = document.createElement("div");
