@@ -1,52 +1,82 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Регистрация</title>
     <style>
-        body { font-family: Arial, sans-serif; text-align: center; margin-top: 50px; }
-        form { max-width: 300px; margin: auto; }
-        input { display: block; margin: 10px auto; padding: 10px; width: 100%; }
-        button { background: #007bff; color: white; padding: 10px; border: none; cursor: pointer; }
+      body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        margin-top: 50px;
+      }
+      form {
+        max-width: 300px;
+        margin: auto;
+      }
+      input {
+        display: block;
+        margin: 10px auto;
+        padding: 10px;
+        width: 100%;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        padding: 10px;
+        border: none;
+        cursor: pointer;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <h1>Регистрация пользователя</h1>
     <form id="signupForm">
-        <input type="text" id="first_name" placeholder="Имя">
-        <input type="text" id="last_name" placeholder="Фамилия">
-        <input type="email" id="email" placeholder="Email" required>
-        <input type="password" id="password" placeholder="Пароль" required>
-        <button type="submit">Зарегистрироваться</button>
+      <input type="text" id="first_name" placeholder="Имя" />
+      <input type="text" id="last_name" placeholder="Фамилия" />
+      <input type="email" id="email" placeholder="Email" required />
+      <input type="password" id="password" placeholder="Пароль" required />
+      <button type="submit">Зарегистрироваться</button>
     </form>
     <p>Уже есть аккаунт? <a href="login.html">Войти</a></p>
 
     <script>
-        document.getElementById('signupForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const first_name = document.getElementById('first_name').value || null;
-            const last_name = document.getElementById('last_name').value || null;
-            const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+      document
+        .getElementById("signupForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const first_name =
+            document.getElementById("first_name").value || null;
+          const last_name = document.getElementById("last_name").value || null;
+          const email = document.getElementById("email").value;
+          const password = document.getElementById("password").value;
 
-            try {
-                const response = await fetch('http://localhost:8000/auth/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, role: 'regular', first_name, last_name })
-                });
-                const data = await response.json();
-                if (response.ok) {
-                    alert('Регистрация успешна! Теперь войдите.');
-                    window.location.href = 'login.html';
-                } else {
-                    alert('Ошибка: ' + data.detail);
-                }
-            } catch (error) {
-                alert('Ошибка: ' + error);
+          try {
+            const response = await fetch(
+              "http://localhost:8000/auth/register",
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  email,
+                  password,
+                  role: "regular",
+                  first_name,
+                  last_name,
+                }),
+              }
+            );
+            const data = await response.json();
+            if (response.ok) {
+              alert("Регистрация успешна! Теперь войдите.");
+              window.location.href = "login.html";
+            } else {
+              alert("Ошибка: " + data.detail);
             }
+          } catch (error) {
+            alert("Ошибка: " + error);
+          }
         });
     </script>
-</body>
+  </body>
 </html>
