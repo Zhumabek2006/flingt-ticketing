@@ -1,3 +1,4 @@
+from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 from .models import User, Company, Flight, UserRole, Ticket, TicketStatus
 from .auth import get_password_hash
@@ -6,6 +7,24 @@ from sqlalchemy import func
 
 def get_user_by_email(db: Session, email: str):
     return db.query(User).filter(User.email == email).first()
+
+def check_user_active(db: Session, user_id: int):
+    """
+    Проверяет статус пользователя.
+    Если пользователь заблокирован (is_active=False), выбрасывает исключение.
+    """
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Пользователь не найден"
+        )
+    if not user.is_active:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Пользователь заблокирован"
+        )
+    return user
 
 def create_user(db: Session, user: schemas.UserCreate):
     hashed_password = get_password_hash(user.password)
