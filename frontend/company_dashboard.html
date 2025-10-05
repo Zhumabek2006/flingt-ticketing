@@ -135,12 +135,24 @@
             gap: 15px;
             margin-bottom: 20px;
         }
+        /* Toasts */
+        .toast-container { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; }
+        .toast { min-width: 260px; max-width: 360px; background: #fff; border-left: 6px solid #28a745; box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-radius: 8px; padding: 12px 14px; display: flex; gap: 10px; animation: slideIn .35s ease, fadeOut .3s ease 4.2s forwards; }
+        .toast.error { border-left-color: #dc3545; }
+        .toast .title { font-weight: 700; margin-bottom: 4px; }
+        .toast .msg { color: #444; }
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(-6px); } }
+        .btn { transition: transform .08s ease, box-shadow .2s ease; }
+        .btn:active { transform: translateY(1px); }
     </style>
 </head>
 <body>
+    <div class="toast-container" id="toastContainer"></div>
     <div class="header">
         <h1>Панель Менеджера Компании</h1>
         <div>
+            <span id="managerName" style="margin-right:10px;font-weight:bold;"></span>
             <span id="managerEmail"></span>
             <button class="logout-btn" onclick="logout()">Выйти</button>
         </div>
@@ -269,6 +281,22 @@
                     </tbody>
                 </table>
             </div>
+            <div class="section hidden" id="passengersSection">
+                <h3>Пассажиры рейса <span id="passengersFlightId"></span></h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Ticket ID</th>
+                            <th>Пассажир</th>
+                            <th>Email</th>
+                            <th>Статус билета</th>
+                            <th>Цена</th>
+                            <th>Дата покупки</th>
+                        </tr>
+                    </thead>
+                    <tbody id="passengersTableBody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
 
@@ -296,7 +324,11 @@
                         window.location.href = 'index.html';
                         return;
                     }
-                    document.getElementById('managerEmail').textContent = currentUser.email;
+                    const fullName = [currentUser.first_name, currentUser.last_name]
+                        .filter(Boolean)
+                        .join(' ');
+                    document.getElementById('managerName').textContent = fullName || 'Менеджер';
+                    document.getElementById('managerEmail').textContent = `(${currentUser.email})`;
                     loadStats();
                 } else {
                     window.location.href = 'login.html';
@@ -437,7 +469,7 @@
                 console.log('Ответ сервера:', response.status, response.statusText);
 
                 if (response.ok) {
-                    alert('Рейс успешно добавлен!');
+                    toast('Успешно', 'Рейс добавлен', 'success');
                     document.getElementById('flightForm').reset();
                     loadStats();
                 } else {
@@ -450,11 +482,11 @@
                     } catch (e) {
                         errorMessage = errorText;
                     }
-                    alert('Ошибка: ' + errorMessage);
+                    toast('Ошибка', errorMessage, 'error');
                 }
             } catch (error) {
                 console.error('Ошибка сети:', error);
-                alert('Ошибка: ' + error.message);
+                toast('Ошибка', error.message, 'error');
             }
         });
 
@@ -509,6 +541,8 @@
                                 onclick="toggleFlightStatus(${flight.id}, ${flight.is_active})">
                             ${flight.is_active ? 'Деактивировать' : 'Активировать'}
                         </button>
+                        <button class="btn btn-info" onclick="viewPassengers(${flight.id})">Пассажиры</button>
+                        <button class="btn btn-danger" onclick="deleteFlight(${flight.id})">Удалить</button>
                     </td>
                 `;
                 tableBody.appendChild(row);
@@ -532,18 +566,84 @@
                 });
 
                 if (response.ok) {
-                    alert(`Рейс ${!currentStatus ? 'активирован' : 'деактивирован'}`);
+                    toast('Готово', `Рейс ${!currentStatus ? 'активирован' : 'деактивирован'}`, 'success');
                     loadFlights();
                     loadStats();
                 } else {
                     const error = await response.json();
-                    alert('Ошибка: ' + error.detail);
+                    toast('Ошибка', error.detail || 'Не удалось изменить статус', 'error');
                 }
             } catch (error) {
-                alert('Ошибка: ' + error.message);
+                toast('Ошибка', error.message, 'error');
             }
         }
 
+        // Просмотр пассажиров рейса
+        async function viewPassengers(flightId) {
+            try {
+                const response = await fetch(`http://localhost:8000/company/flights/${flightId}/passengers`, {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    toast('Ошибка', err.detail || 'Не удалось загрузить пассажиров', 'error');
+                    return;
+                }
+                const passengers = await response.json();
+                const tbody = document.getElementById('passengersTableBody');
+                tbody.innerHTML = '';
+                passengers.forEach(p => {
+                    const row = document.createElement('tr');
+                    const name = [p.user.first_name, p.user.last_name].filter(Boolean).join(' ') || '—';
+                    row.innerHTML = `
+                        <td>${p.ticket_id}</td>
+                        <td>${name}</td>
+                        <td>${p.user.email}</td>
+                        <td>${p.status}</td>
+                        <td>${p.price}</td>
+                        <td>${p.created_at}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+                document.getElementById('passengersFlightId').textContent = `#${flightId}`;
+                document.getElementById('passengersSection').classList.remove('hidden');
+            } catch (e) {
+                console.error(e);
+                toast('Ошибка', 'Не удалось загрузить пассажиров', 'error');
+            }
+        }
+
+        // Удаление рейса
+        async function deleteFlight(flightId) {
+            if (!confirm('Вы уверены, что хотите удалить этот рейс?')) return;
+            try {
+                const response = await fetch(`http://localhost:8000/company/flights/${flightId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    toast('Ошибка', 'Не удалось удалить рейс: ' + (err.detail || 'ошибка'), 'error');
+                    return;
+                }
+                toast('Готово', 'Рейс удалён', 'success');
+                loadFlights();
+                loadStats();
+            } catch (e) {
+                console.error(e);
+                toast('Ошибка', 'Ошибка при удалении рейса', 'error');
+            }
+        }
+
+        // Toast helper
+        function toast(title, message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const el = document.createElement('div');
+            el.className = 'toast' + (type === 'error' ? ' error' : '');
+            el.innerHTML = `<div><div class="title">${title}</div><div class="msg">${message}</div></div>`;
+            container.appendChild(el);
+            setTimeout(() => { el.remove(); }, 4600);
+        }
         // Применение фильтров
         function applyFilters() {
             const cityFilter = document.getElementById('filterCity').value.toLowerCase();

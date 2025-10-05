@@ -121,9 +121,20 @@
             border-radius: 4px; 
             cursor: pointer; 
         }
+        /* Toasts */
+        .toast-container { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; }
+        .toast { min-width: 260px; max-width: 360px; background: #fff; border-left: 6px solid #007bff; box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-radius: 8px; padding: 12px 14px; display: flex; gap: 10px; animation: slideIn .35s ease, fadeOut .3s ease 4.2s forwards; }
+        .toast.error { border-left-color: #dc3545; }
+        .toast .title { font-weight: 700; margin-bottom: 4px; }
+        .toast .msg { color: #444; }
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(-6px); } }
+        .btn { transition: transform .08s ease, box-shadow .2s ease; }
+        .btn:active { transform: translateY(1px); }
     </style>
 </head>
 <body>
+    <div class="toast-container" id="toastContainer"></div>
     <div class="header">
         <h1>Админ Панель</h1>
         <div>
@@ -172,8 +183,16 @@
         <!-- Управление пользователями -->
         <div class="section">
             <h2>Управление пользователями</h2>
-            <button class="btn" onclick="loadUsers()">Показать всех пользователей</button>
-            <button class="btn" onclick="loadManagers()">Показать менеджеров</button>
+            <div style="margin-bottom:10px;">
+                <button class="btn" onclick="loadUsers()">Показать обычных пользователей</button>
+                <button class="btn" onclick="loadManagers()">Показать менеджеров</button>
+                <button class="btn" onclick="loadBlockedUsers()">Показать заблокированных</button>
+            </div>
+            <div style="display:flex;gap:10px;align-items:center;margin-bottom:10px;">
+                <input id="searchEmail" type="text" placeholder="Поиск по email" style="flex:1;padding:10px;border:1px solid #ddd;border-radius:4px;">
+                <button class="btn" onclick="searchUsers()">Найти</button>
+                <button class="btn" onclick="exportCSV()">Экспорт CSV</button>
+            </div>
             <div id="usersTable" class="hidden">
                 <table>
                     <thead>
@@ -266,26 +285,27 @@
                 });
 
                 if (response.ok) {
-                    alert('Менеджер успешно добавлен!');
+                    toast('Успешно', 'Менеджер добавлен', 'success');
                     document.getElementById('managerForm').reset();
                     loadStats();
                 } else {
                     const error = await response.json();
-                    alert('Ошибка: ' + error.detail);
+                    toast('Ошибка', error.detail || 'Не удалось добавить менеджера', 'error');
                 }
             } catch (error) {
-                alert('Ошибка: ' + error.message);
+                toast('Ошибка', error.message, 'error');
             }
         });
 
-        // Загрузка пользователей
+        // Загрузка обычных пользователей
         async function loadUsers() {
             try {
                 const response = await fetch('http://localhost:8000/admin/users', {
                     headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
                 });
                 const users = await response.json();
-                displayUsers(users);
+                const regulars = users.filter(user => user.role === 'regular');
+                displayUsers(regulars);
             } catch (error) {
                 console.error('Ошибка загрузки пользователей:', error);
             }
@@ -305,10 +325,26 @@
             }
         }
 
+        // Загрузка заблокированных
+        async function loadBlockedUsers() {
+            try {
+                const response = await fetch('http://localhost:8000/admin/users', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const users = await response.json();
+                const blocked = users.filter(user => !user.is_active);
+                displayUsers(blocked);
+            } catch (e) {
+                console.error('Ошибка загрузки заблокированных:', e);
+            }
+        }
+
         // Отображение пользователей
+        let lastUsersData = [];
         function displayUsers(users) {
             const tableBody = document.getElementById('usersTableBody');
             tableBody.innerHTML = '';
+            lastUsersData = users;
 
             users.forEach(user => {
                 const row = document.createElement('tr');
@@ -333,6 +369,35 @@
             document.getElementById('usersTable').classList.remove('hidden');
         }
 
+        // Поиск по email по уже загруженному набору
+        function searchUsers() {
+            const q = document.getElementById('searchEmail').value.toLowerCase();
+            const filtered = lastUsersData.filter(u => u.email.toLowerCase().includes(q));
+            displayUsers(filtered);
+        }
+
+        // Экспорт в CSV текущей таблицы
+        function exportCSV() {
+            const rows = [['ID','Email','Роль','Статус','Компания']];
+            lastUsersData.forEach(u => {
+                rows.push([
+                    String(u.id),
+                    u.email,
+                    u.role,
+                    u.is_active ? 'active' : 'blocked',
+                    u.company_id ? String(u.company_id) : '-'
+                ]);
+            });
+            const csv = rows.map(r => r.map(v => '"' + String(v).replaceAll('"','""') + '"').join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'users.csv';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
         // Переключение статуса пользователя
         async function toggleUserStatus(userId, currentStatus) {
             try {
@@ -348,16 +413,26 @@
                 });
 
                 if (response.ok) {
-                    alert(`Пользователь ${!currentStatus ? 'разблокирован' : 'заблокирован'}`);
+                    toast('Готово', `Пользователь ${!currentStatus ? 'разблокирован' : 'заблокирован'}`, 'success');
                     loadUsers();
                     loadStats();
                 } else {
                     const error = await response.json();
-                    alert('Ошибка: ' + error.detail);
+                    toast('Ошибка', error.detail || 'Не удалось изменить статус', 'error');
                 }
             } catch (error) {
-                alert('Ошибка: ' + error.message);
+                toast('Ошибка', error.message, 'error');
             }
+        }
+
+        // Toast helper
+        function toast(title, message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const el = document.createElement('div');
+            el.className = 'toast' + (type === 'error' ? ' error' : '');
+            el.innerHTML = `<div><div class="title">${title}</div><div class="msg">${message}</div></div>`;
+            container.appendChild(el);
+            setTimeout(() => { el.remove(); }, 4600);
         }
 
         // Выход

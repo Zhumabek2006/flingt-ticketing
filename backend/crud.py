@@ -1,5 +1,5 @@
 from sqlalchemy.orm import Session
-from .models import User, Company, Flight, UserRole
+from .models import User, Company, Flight, UserRole, Ticket, TicketStatus
 from .auth import get_password_hash
 from . import schemas
 from sqlalchemy import func
@@ -18,7 +18,13 @@ def create_user(db: Session, user: schemas.UserCreate):
     else:
         role = UserRole.regular
     
-    db_user = User(email=user.email, hashed_password=hashed_password, role=role)
+    db_user = User(
+        email=user.email,
+        hashed_password=hashed_password,
+        role=role,
+        first_name=user.first_name,
+        last_name=user.last_name
+    )
     db.add(db_user)
     db.commit()
     db.refresh(db_user)
@@ -119,6 +125,49 @@ def update_flight_status(db: Session, flight_id: int, company_id: int, is_active
         db.refresh(flight)
     return flight
 
+def delete_flight(db: Session, flight_id: int, company_id: int):
+    # Нельзя удалить рейс, если по нему уже есть билеты
+    flight = db.query(Flight).filter(Flight.id == flight_id, Flight.company_id == company_id).first()
+    if not flight:
+        return None
+    has_tickets = db.query(Ticket).filter(Ticket.flight_id == flight_id).count() > 0
+    if has_tickets:
+        return False
+    db.delete(flight)
+    db.commit()
+    return True
+
+def get_flight_passengers(db: Session, flight_id: int, company_id: int):
+    # Проверяем принадлежность рейса компании
+    flight = db.query(Flight).filter(Flight.id == flight_id, Flight.company_id == company_id).first()
+    if not flight:
+        return None
+    # Выгружаем билеты с пользователями
+    from sqlalchemy.orm import joinedload
+    tickets = (
+        db.query(Ticket)
+        .options(joinedload(Ticket.user))
+        .filter(Ticket.flight_id == flight_id)
+        .order_by(Ticket.created_at.desc())
+        .all()
+    )
+    result = []
+    for t in tickets:
+        result.append({
+            "ticket_id": t.id,
+            "status": t.status.value,
+            "price": t.price,
+            "created_at": t.created_at.isoformat(),
+            "user": {
+                "id": t.user.id,
+                "email": t.user.email,
+                "first_name": getattr(t.user, "first_name", None),
+                "last_name": getattr(t.user, "last_name", None),
+                "is_active": t.user.is_active,
+            }
+        })
+    return result
+
 def get_company_flights_count(db: Session, company_id: int):
     return db.query(Flight).filter(Flight.company_id == company_id).count()
 
@@ -141,3 +190,43 @@ def get_company_stats(db: Session, company_id: int):
         "available_seats": available_seats,
         "total_revenue": total_revenue
     }
+
+# Tickets
+def create_ticket(db: Session, user_id: int, flight_id: int):
+    flight = db.query(Flight).filter(Flight.id == flight_id, Flight.is_active == True).first()
+    if not flight or flight.available_seats <= 0:
+        return None
+    flight.available_seats -= 1
+    ticket = Ticket(user_id=user_id, flight_id=flight_id, price=flight.price, status=TicketStatus.active)
+    db.add(ticket)
+    db.commit()
+    db.refresh(ticket)
+    return ticket
+
+def get_user_tickets(db: Session, user_id: int):
+    # Возвращаем билеты вместе с данными рейса
+    from sqlalchemy.orm import joinedload
+    return (
+        db.query(Ticket)
+        .options(joinedload(Ticket.flight))
+        .filter(Ticket.user_id == user_id)
+        .order_by(Ticket.created_at.desc())
+        .all()
+    )
+
+def cancel_ticket(db: Session, user_id: int, ticket_id: int):
+    from datetime import datetime, timedelta
+    ticket = db.query(Ticket).filter(Ticket.id == ticket_id, Ticket.user_id == user_id).first()
+    if not ticket or ticket.status != TicketStatus.active:
+        return None
+    flight = db.query(Flight).filter(Flight.id == ticket.flight_id).first()
+    # Проверка окна возврата 24ч
+    flight_dt = datetime.combine(flight.departure_date, flight.departure_time)
+    if flight_dt - datetime.utcnow() < timedelta(hours=24):
+        return False
+    ticket.status = TicketStatus.refunded
+    ticket.canceled_at = datetime.utcnow()
+    flight.available_seats += 1
+    db.commit()
+    db.refresh(ticket)
+    return ticket

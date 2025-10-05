@@ -149,12 +149,45 @@
             font-size: 1.1em;
             font-weight: bold;
         }
+        /* Toast notifications */
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 9999;
+        }
+        .toast {
+            min-width: 260px;
+            max-width: 360px;
+            background: #fff;
+            border-left: 6px solid #28a745;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+            border-radius: 8px;
+            padding: 12px 14px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+            animation: slideIn .35s ease, fadeOut .3s ease 4.2s forwards;
+        }
+        .toast.error { border-left-color: #dc3545; }
+        .toast .title { font-weight: 700; margin-bottom: 4px; }
+        .toast .msg { color: #444; }
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeOut { to { opacity: 0; transform: translateY(-6px); } }
+        /* Buttons micro-anim */
+        .btn { transition: transform .08s ease, box-shadow .2s ease; }
+        .btn:active { transform: translateY(1px); }
     </style>
 </head>
 <body>
+    <div class="toast-container" id="toastContainer"></div>
     <div class="header">
         <h1>Панель Пользователя</h1>
         <div>
+            <span id="userName" style="margin-right:10px;font-weight:bold;"></span>
             <span id="userEmail"></span>
             <button class="logout-btn" onclick="logout()">Выйти</button>
         </div>
@@ -198,7 +231,25 @@
         <!-- Мои билеты -->
         <div class="section">
             <h2>Мои билеты</h2>
-            <button class="btn" onclick="loadMyTickets()">Загрузить мои билеты</button>
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="ticketFilterStatus">Статус:</label>
+                    <select id="ticketFilterStatus">
+                        <option value="">Все</option>
+                        <option value="active">Активные</option>
+                        <option value="refunded">Возврат</option>
+                        <option value="canceled">Отмененные</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="ticketFilterDate">По дате вылета:</label>
+                    <input type="date" id="ticketFilterDate">
+                </div>
+                <div class="form-group">
+                    <label>&nbsp;</label>
+                    <button class="btn" onclick="loadMyTickets()">Загрузить мои билеты</button>
+                </div>
+            </div>
             <div id="myTickets" class="hidden">
                 <table>
                     <thead>
@@ -243,7 +294,11 @@
                         window.location.href = 'index.html';
                         return;
                     }
-                    document.getElementById('userEmail').textContent = currentUser.email;
+                    const fullName = [currentUser.first_name, currentUser.last_name]
+                        .filter(Boolean)
+                        .join(' ');
+                    document.getElementById('userName').textContent = fullName || 'Пользователь';
+                    document.getElementById('userEmail').textContent = `(${currentUser.email})`;
                 } else {
                     window.location.href = 'login.html';
                 }
@@ -268,38 +323,15 @@
             }
 
             try {
-                // Пока что используем заглушку - в реальном проекте здесь будет API поиска
-                const mockFlights = [
-                    {
-                        id: 1,
-                        flight_number: 'SU123',
-                        departure_city: fromCity,
-                        arrival_city: toCity,
-                        departure_date: departureDate,
-                        departure_time: '10:00',
-                        arrival_time: '12:00',
-                        price: 5000,
-                        available_seats: 50,
-                        total_seats: 100,
-                        company_name: 'Аэрофлот'
-                    },
-                    {
-                        id: 2,
-                        flight_number: 'S7456',
-                        departure_city: fromCity,
-                        arrival_city: toCity,
-                        departure_date: departureDate,
-                        departure_time: '14:00',
-                        arrival_time: '16:00',
-                        price: 4500,
-                        available_seats: 30,
-                        total_seats: 80,
-                        company_name: 'S7 Airlines'
-                    }
-                ];
-
-                searchResults = mockFlights;
-                displaySearchResults(mockFlights);
+                const params = new URLSearchParams({
+                    departure_city: fromCity,
+                    arrival_city: toCity,
+                    date: departureDate
+                });
+                const response = await fetch(`http://localhost:8000/flights?${params.toString()}`);
+                const flights = await response.json();
+                searchResults = flights;
+                displaySearchResults(flights);
                 document.getElementById('searchResults').classList.remove('hidden');
             } catch (error) {
                 console.error('Ошибка поиска:', error);
@@ -354,15 +386,28 @@
 
             if (confirm(`Подтвердить покупку билета на рейс ${flight.flight_number} за ${flight.price} ₽?`)) {
                 try {
-                    // Здесь будет API для покупки билета
-                    alert(`Билет на рейс ${flight.flight_number} успешно куплен! ID билета: ${Date.now()}`);
-                    
-                    // Обновляем доступные места
-                    flight.available_seats -= 1;
-                    displaySearchResults(searchResults);
+                    const response = await fetch('http://localhost:8000/tickets', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({ flight_id: flightId })
+                    });
+                    const data = await response.json();
+                    if (!response.ok) {
+                        alert('Ошибка покупки: ' + (data.detail || JSON.stringify(data)));
+                        return;
+                    }
+                    toast('Успешно', `Билет #${data.id} забронирован`, 'success');
+                    // Обновить список результатов (уменьшить доступные места)
+                    const refreshed = await fetch(`http://localhost:8000/flights?departure_city=${encodeURIComponent(flight.departure_city)}&arrival_city=${encodeURIComponent(flight.arrival_city)}&date=${encodeURIComponent(flight.departure_date)}`);
+                    const flights = await refreshed.json();
+                    searchResults = flights;
+                    displaySearchResults(flights);
                 } catch (error) {
                     console.error('Ошибка покупки:', error);
-                    alert('Ошибка при покупке билета');
+                    toast('Ошибка', 'Не удалось купить билет', 'error');
                 }
             }
         }
@@ -370,23 +415,32 @@
         // Загрузка моих билетов
         async function loadMyTickets() {
             try {
-                // Здесь будет API для загрузки билетов пользователя
-                const mockTickets = [
-                    {
-                        id: 1,
-                        flight_number: 'SU123',
-                        route: 'Москва → Санкт-Петербург',
-                        date_time: '2025-10-06 10:00',
-                        price: 5000,
-                        status: 'Активен'
-                    }
-                ];
+                const response = await fetch('http://localhost:8000/tickets/my', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                let tickets = await response.json();
+                // Применяем фильтры
+                const statusFilter = document.getElementById('ticketFilterStatus').value;
+                const dateFilter = document.getElementById('ticketFilterDate').value;
+                if (statusFilter) {
+                    tickets = tickets.filter(t => t.status === statusFilter);
+                }
+                if (dateFilter) {
+                    tickets = tickets.filter(t => t.date === dateFilter);
+                }
 
-                displayMyTickets(mockTickets);
+                displayMyTickets(tickets.map(t => ({
+                    id: t.id,
+                    flight_number: t.flight_number,
+                    route: t.route,
+                    date_time: `${t.date} ${t.time}`,
+                    price: t.price,
+                    status: t.status === 'active' ? 'Активен' : (t.status === 'refunded' ? 'Возврат' : 'Отменен')
+                })));
                 document.getElementById('myTickets').classList.remove('hidden');
-            } catch (error) {
-                console.error('Ошибка загрузки билетов:', error);
-                alert('Ошибка при загрузке билетов');
+            } catch (e) {
+                console.error(e);
+                toast('Ошибка', 'Не удалось загрузить билеты', 'error');
             }
         }
 
@@ -416,15 +470,22 @@
 
         // Отмена билета
         async function cancelTicket(ticketId) {
-            if (confirm('Вы уверены, что хотите отменить этот билет?')) {
-                try {
-                    // Здесь будет API для отмены билета
-                    alert('Билет отменен');
-                    loadMyTickets();
-                } catch (error) {
-                    console.error('Ошибка отмены:', error);
-                    alert('Ошибка при отмене билета');
+            if (!confirm('Вы уверены, что хотите отменить этот билет?')) return;
+            try {
+                const response = await fetch(`http://localhost:8000/tickets/${ticketId}/cancel`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                if (!response.ok) {
+                    const err = await response.json();
+                    toast('Ошибка', 'Не удалось отменить билет: ' + (err.detail || 'ошибка'), 'error');
+                    return;
                 }
+                toast('Готово', 'Билет отменён и оформлен возврат', 'success');
+                loadMyTickets();
+            } catch (error) {
+                console.error('Ошибка отмены:', error);
+                toast('Ошибка', 'Ошибка при отмене билета', 'error');
             }
         }
 
@@ -432,6 +493,16 @@
         function logout() {
             localStorage.removeItem('token');
             window.location.href = 'index.html';
+        }
+
+        // Toast helper
+        function toast(title, message, type = 'success') {
+            const container = document.getElementById('toastContainer');
+            const el = document.createElement('div');
+            el.className = 'toast' + (type === 'error' ? ' error' : '');
+            el.innerHTML = `<div><div class="title">${title}</div><div class="msg">${message}</div></div>`;
+            container.appendChild(el);
+            setTimeout(() => { el.remove(); }, 4600);
         }
     </script>
 </body>

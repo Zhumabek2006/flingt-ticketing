@@ -14,6 +14,8 @@
 <body>
     <h1>Регистрация пользователя</h1>
     <form id="signupForm">
+        <input type="text" id="first_name" placeholder="Имя">
+        <input type="text" id="last_name" placeholder="Фамилия">
         <input type="email" id="email" placeholder="Email" required>
         <input type="password" id="password" placeholder="Пароль" required>
         <button type="submit">Зарегистрироваться</button>
@@ -23,6 +25,8 @@
     <script>
         document.getElementById('signupForm').addEventListener('submit', async (e) => {
             e.preventDefault();
+            const first_name = document.getElementById('first_name').value || null;
+            const last_name = document.getElementById('last_name').value || null;
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
 
@@ -30,7 +34,7 @@
                 const response = await fetch('http://localhost:8000/auth/register', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ email, password, role: 'regular' })
+                    body: JSON.stringify({ email, password, role: 'regular', first_name, last_name })
                 });
                 const data = await response.json();
                 if (response.ok) {

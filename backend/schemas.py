@@ -7,10 +7,14 @@ class UserCreate(BaseModel):
     email: str
     password: str
     role: str = "regular"  # Принимаем строку, конвертируем в enum в CRUD
+    first_name: str | None = None
+    last_name: str | None = None
 
 class UserOut(BaseModel):
     id: int
     email: str
+    first_name: str | None = None
+    last_name: str | None = None
     role: UserRole
     is_active: bool
     created_at: datetime
@@ -69,3 +73,18 @@ class CompanyStats(BaseModel):
     total_seats: int
     available_seats: int
     total_revenue: float
+
+
+class TicketCreate(BaseModel):
+    flight_id: int
+
+
+class TicketOut(BaseModel):
+    id: int
+    flight_id: int
+    price: float
+    status: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True

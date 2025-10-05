@@ -37,3 +37,27 @@ def get_company_stats(db: Session = Depends(get_db), current_user = Depends(auth
     if not current_user.company_id:
         raise HTTPException(status_code=400, detail="User is not associated with any company")
     return crud.get_company_stats(db, current_user.company_id)
+
+@router.delete("/flights/{flight_id}")
+def delete_flight(flight_id: int, db: Session = Depends(get_db), current_user = Depends(auth.get_current_user)):
+    if current_user.role != models.UserRole.manager:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User is not associated with any company")
+    result = crud.delete_flight(db, flight_id, current_user.company_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Flight not found")
+    if result is False:
+        raise HTTPException(status_code=400, detail="Cannot delete flight with existing tickets")
+    return {"status": "ok"}
+
+@router.get("/flights/{flight_id}/passengers")
+def flight_passengers(flight_id: int, db: Session = Depends(get_db), current_user = Depends(auth.get_current_user)):
+    if current_user.role != models.UserRole.manager:
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+    if not current_user.company_id:
+        raise HTTPException(status_code=400, detail="User is not associated with any company")
+    result = crud.get_flight_passengers(db, flight_id, current_user.company_id)
+    if result is None:
+        raise HTTPException(status_code=404, detail="Flight not found")
+    return result
