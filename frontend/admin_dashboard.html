@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Админ Панель</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f5f5f5;
+        }
+        .header { 
+            background: #007bff; 
+            color: white; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 20px auto; 
+            padding: 0 20px; 
+        }
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 30px; 
+        }
+        .stat-card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            text-align: center; 
+        }
+        .stat-number { 
+            font-size: 2em; 
+            font-weight: bold; 
+            color: #007bff; 
+        }
+        .section { 
+            background: white; 
+            margin: 20px 0; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .form-group { 
+            margin: 15px 0; 
+        }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+        }
+        .form-group input { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+        .btn { 
+            background: #007bff; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px; 
+        }
+        .btn:hover { 
+            background: #0056b3; 
+        }
+        .btn-danger { 
+            background: #dc3545; 
+        }
+        .btn-danger:hover { 
+            background: #c82333; 
+        }
+        .btn-success { 
+            background: #28a745; 
+        }
+        .btn-success:hover { 
+            background: #218838; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+        }
+        th, td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #ddd; 
+        }
+        th { 
+            background-color: #f8f9fa; 
+            font-weight: bold; 
+        }
+        .status-active { 
+            color: #28a745; 
+            font-weight: bold; 
+        }
+        .status-inactive { 
+            color: #dc3545; 
+            font-weight: bold; 
+        }
+        .hidden { 
+            display: none; 
+        }
+        .logout-btn { 
+            background: #dc3545; 
+            color: white; 
+            padding: 8px 16px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Админ Панель</h1>
+        <div>
+            <span id="adminEmail"></span>
+            <button class="logout-btn" onclick="logout()">Выйти</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalUsers">-</div>
+                <div>Всего пользователей</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeUsers">-</div>
+                <div>Активных пользователей</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalCompanies">-</div>
+                <div>Всего компаний</div>
+            </div>
+        </div>
+
+        <!-- Добавить менеджера -->
+        <div class="section">
+            <h2>Добавить менеджера компании</h2>
+            <form id="managerForm">
+                <div class="form-group">
+                    <label for="companyName">Название компании:</label>
+                    <input type="text" id="companyName" required>
+                </div>
+                <div class="form-group">
+                    <label for="managerEmail">Email менеджера:</label>
+                    <input type="email" id="managerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="managerPassword">Пароль менеджера:</label>
+                    <input type="password" id="managerPassword" required>
+                </div>
+                <button type="submit" class="btn btn-success">Добавить менеджера</button>
+            </form>
+        </div>
+
+        <!-- Управление пользователями -->
+        <div class="section">
+            <h2>Управление пользователями</h2>
+            <button class="btn" onclick="loadUsers()">Показать всех пользователей</button>
+            <button class="btn" onclick="loadManagers()">Показать менеджеров</button>
+            <div id="usersTable" class="hidden">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Email</th>
+                            <th>Роль</th>
+                            <th>Статус</th>
+                            <th>Компания</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+
+        // Проверка авторизации при загрузке
+        window.onload = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8000/users/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    currentUser = await response.json();
+                    if (currentUser.role !== 'admin') {
+                        alert('Доступ запрещен. Требуются права администратора.');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    document.getElementById('adminEmail').textContent = currentUser.email;
+                    loadStats();
+                } else {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                window.location.href = 'login.html';
+            }
+        };
+
+        // Загрузка статистики
+        async function loadStats() {
+            try {
+                const response = await fetch('http://localhost:8000/admin/stats', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const stats = await response.json();
+                
+                document.getElementById('totalUsers').textContent = stats.total_users;
+                document.getElementById('activeUsers').textContent = stats.active_users;
+                document.getElementById('totalCompanies').textContent = stats.total_companies;
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
+            }
+        }
+
+        // Добавление менеджера
+        document.getElementById('managerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const companyName = document.getElementById('companyName').value;
+            const managerEmail = document.getElementById('managerEmail').value;
+            const managerPassword = document.getElementById('managerPassword').value;
+
+            try {
+                const response = await fetch('http://localhost:8000/admin/managers', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        company_name: companyName,
+                        email: managerEmail,
+                        password: managerPassword
+                    })
+                });
+
+                if (response.ok) {
+                    alert('Менеджер успешно добавлен!');
+                    document.getElementById('managerForm').reset();
+                    loadStats();
+                } else {
+                    const error = await response.json();
+                    alert('Ошибка: ' + error.detail);
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        });
+
+        // Загрузка пользователей
+        async function loadUsers() {
+            try {
+                const response = await fetch('http://localhost:8000/admin/users', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const users = await response.json();
+                displayUsers(users);
+            } catch (error) {
+                console.error('Ошибка загрузки пользователей:', error);
+            }
+        }
+
+        // Загрузка менеджеров
+        async function loadManagers() {
+            try {
+                const response = await fetch('http://localhost:8000/admin/users', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const users = await response.json();
+                const managers = users.filter(user => user.role === 'manager');
+                displayUsers(managers);
+            } catch (error) {
+                console.error('Ошибка загрузки менеджеров:', error);
+            }
+        }
+
+        // Отображение пользователей
+        function displayUsers(users) {
+            const tableBody = document.getElementById('usersTableBody');
+            tableBody.innerHTML = '';
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.id}</td>
+                    <td>${user.email}</td>
+                    <td>${user.role}</td>
+                    <td class="${user.is_active ? 'status-active' : 'status-inactive'}">
+                        ${user.is_active ? 'Активен' : 'Заблокирован'}
+                    </td>
+                    <td>${user.company_id || '-'}</td>
+                    <td>
+                        <button class="btn ${user.is_active ? 'btn-danger' : 'btn-success'}" 
+                                onclick="toggleUserStatus(${user.id}, ${user.is_active})">
+                            ${user.is_active ? 'Заблокировать' : 'Разблокировать'}
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            document.getElementById('usersTable').classList.remove('hidden');
+        }
+
+        // Переключение статуса пользователя
+        async function toggleUserStatus(userId, currentStatus) {
+            try {
+                const response = await fetch(`http://localhost:8000/admin/users/${userId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        is_active: !currentStatus
+                    })
+                });
+
+                if (response.ok) {
+                    alert(`Пользователь ${!currentStatus ? 'разблокирован' : 'заблокирован'}`);
+                    loadUsers();
+                    loadStats();
+                } else {
+                    const error = await response.json();
+                    alert('Ошибка: ' + error.detail);
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        // Выход
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

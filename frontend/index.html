@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сервис по продаже авиабилетов</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
+        header { background: #007bff; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
+        nav a { color: white; margin-left: 10px; text-decoration: none; }
+        .slider { height: 200px; background: #f0f0f0; text-align: center; padding: 50px; }
+        .search-form { margin: 20px; text-align: center; }
+        .offers { margin: 20px; }
+        .buy-btn { background: #28a745; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Добро пожаловать в сервис по продаже авиабилетов!</h1>
+        <nav>
+            <a href="login.html">Войти</a>
+            <a href="signup.html">Зарегистрироваться</a>
+        </nav>
+    </header>
+    
+    <div class="slider" id="slider">
+        <p>Баннер 1: Специальное предложение!</p>
+    </div>
+    
+    <div class="offers">
+        <h2>Горячие предложения</h2>
+        <p>Рейс Москва - Санкт-Петербург за 5000 руб.</p>
+    </div>
+    
+    <div class="search-form">
+        <h2>Начните поиск билетов</h2>
+        <p>Для покупки билетов необходимо войти в систему</p>
+        <button type="button" class="buy-btn" onclick="handleBuy()">Купить билеты</button>
+    </div>
+
+    <script>
+        const banners = ['Баннер 1: Специальное предложение!', 'Баннер 2: Скидки на международные рейсы!', 'Баннер 3: Летайте с комфортом!'];
+        let currentBanner = 0;
+        const slider = document.getElementById('slider');
+        setInterval(() => {
+            currentBanner = (currentBanner + 1) % banners.length;
+            slider.innerHTML = `<p>${banners[currentBanner]}</p>`;
+        }, 3000);
+
+        function handleBuy() {
+            if (localStorage.getItem('token')) {
+                window.location.href = 'user_dashboard.html';
+            } else {
+                window.location.href = 'login.html';
+            }
+        }
+
+        window.onload = () => {
+            if (localStorage.getItem('token')) {
+                // Можно добавить fetch /users/me для роли и редиректа
+            }
+        };
+    </script>
+</body>
+</html>

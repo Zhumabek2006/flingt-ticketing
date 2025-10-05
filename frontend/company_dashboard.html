@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Панель Менеджера Компании v3</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f5f5f5;
+        }
+        .header { 
+            background: #28a745; 
+            color: white; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 20px auto; 
+            padding: 0 20px; 
+        }
+        .stats-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); 
+            gap: 20px; 
+            margin-bottom: 30px; 
+        }
+        .stat-card { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+            text-align: center; 
+        }
+        .stat-number { 
+            font-size: 2em; 
+            font-weight: bold; 
+            color: #28a745; 
+        }
+        .section { 
+            background: white; 
+            margin: 20px 0; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .form-group { 
+            margin: 15px 0; 
+        }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+        }
+        .form-group input, .form-group select { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .btn { 
+            background: #28a745; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px; 
+        }
+        .btn:hover { 
+            background: #218838; 
+        }
+        .btn-danger { 
+            background: #dc3545; 
+        }
+        .btn-danger:hover { 
+            background: #c82333; 
+        }
+        .btn-info { 
+            background: #17a2b8; 
+        }
+        .btn-info:hover { 
+            background: #138496; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+        }
+        th, td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #ddd; 
+        }
+        th { 
+            background-color: #f8f9fa; 
+            font-weight: bold; 
+        }
+        .status-active { 
+            color: #28a745; 
+            font-weight: bold; 
+        }
+        .status-inactive { 
+            color: #dc3545; 
+            font-weight: bold; 
+        }
+        .hidden { 
+            display: none; 
+        }
+        .logout-btn { 
+            background: #dc3545; 
+            color: white; 
+            padding: 8px 16px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+        .filters {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Панель Менеджера Компании</h1>
+        <div>
+            <span id="managerEmail"></span>
+            <button class="logout-btn" onclick="logout()">Выйти</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Статистика -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-number" id="totalFlights">-</div>
+                <div>Всего рейсов</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeFlights">-</div>
+                <div>Активных рейсов</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalSeats">-</div>
+                <div>Всего мест</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalRevenue">-</div>
+                <div>Общий доход (руб.)</div>
+            </div>
+        </div>
+
+        <!-- Добавить рейс -->
+        <div class="section">
+            <h2>Добавить новый рейс</h2>
+            <form id="flightForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="flightNumber">Номер рейса:</label>
+                        <input type="text" id="flightNumber" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="price">Цена билета (руб.):</label>
+                        <input type="number" id="price" min="0" step="0.01" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="departureCity">Откуда:</label>
+                        <input type="text" id="departureCity" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="arrivalCity">Куда:</label>
+                        <input type="text" id="arrivalCity" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="departureDate">Дата вылета:</label>
+                        <input type="date" id="departureDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="departureTime">Время вылета:</label>
+                        <input type="time" id="departureTime" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="arrivalDate">Дата прилета:</label>
+                        <input type="date" id="arrivalDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="arrivalTime">Время прилета:</label>
+                        <input type="time" id="arrivalTime" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="totalSeatsInput">Количество мест:</label>
+                        <input type="number" id="totalSeatsInput" min="1" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn">Добавить рейс</button>
+            </form>
+        </div>
+
+        <!-- Управление рейсами -->
+        <div class="section">
+            <h2>Управление рейсами</h2>
+            <button class="btn btn-info" onclick="loadFlights()">Показать все рейсы</button>
+            <button class="btn" onclick="loadActiveFlights()">Показать активные рейсы</button>
+            
+            <!-- Фильтры -->
+            <div class="filters hidden" id="filtersSection">
+                <div class="form-group">
+                    <label for="filterCity">Фильтр по городу:</label>
+                    <input type="text" id="filterCity" placeholder="Введите город">
+                </div>
+                <div class="form-group">
+                    <label for="filterDate">Фильтр по дате:</label>
+                    <input type="date" id="filterDate">
+                </div>
+                <div class="form-group">
+                    <label for="filterStatus">Статус:</label>
+                    <select id="filterStatus">
+                        <option value="">Все</option>
+                        <option value="active">Активные</option>
+                        <option value="inactive">Неактивные</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <button class="btn" onclick="applyFilters()">Применить фильтры</button>
+                    <button class="btn btn-danger" onclick="clearFilters()">Очистить</button>
+                </div>
+            </div>
+            
+            <div id="flightsTable" class="hidden">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Номер рейса</th>
+                            <th>Маршрут</th>
+                            <th>Дата/Время</th>
+                            <th>Места</th>
+                            <th>Цена</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="flightsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let allFlights = [];
+
+        // Проверка авторизации при загрузке
+        window.onload = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8000/users/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    currentUser = await response.json();
+                    if (currentUser.role !== 'manager') {
+                        alert('Доступ запрещен. Требуются права менеджера.');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    document.getElementById('managerEmail').textContent = currentUser.email;
+                    loadStats();
+                } else {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                window.location.href = 'login.html';
+            }
+        };
+
+        // Загрузка статистики
+        async function loadStats() {
+            try {
+                const response = await fetch('http://localhost:8000/company/stats', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const stats = await response.json();
+                
+                document.getElementById('totalFlights').textContent = stats.total_flights;
+                document.getElementById('activeFlights').textContent = stats.active_flights;
+                document.getElementById('totalSeats').textContent = stats.total_seats;
+                document.getElementById('totalRevenue').textContent = stats.total_revenue.toFixed(2);
+            } catch (error) {
+                console.error('Ошибка загрузки статистики:', error);
+            }
+        }
+
+        // Добавление рейса
+        document.getElementById('flightForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            console.log('=== НАЧАЛО ОБРАБОТКИ ФОРМЫ ===');
+            
+            // Получаем все значения из формы
+            const flightNumber = document.getElementById('flightNumber').value.trim();
+            const departureCity = document.getElementById('departureCity').value.trim();
+            const arrivalCity = document.getElementById('arrivalCity').value.trim();
+            const departureDate = document.getElementById('departureDate').value;
+            const departureTime = document.getElementById('departureTime').value;
+            const arrivalDate = document.getElementById('arrivalDate').value;
+            const arrivalTime = document.getElementById('arrivalTime').value;
+            const totalSeatsStr = document.getElementById('totalSeatsInput').value;
+            const priceStr = document.getElementById('price').value;
+            
+            console.log('Полученные значения:');
+            console.log('- flightNumber:', flightNumber);
+            console.log('- departureCity:', departureCity);
+            console.log('- arrivalCity:', arrivalCity);
+            console.log('- departureDate:', departureDate);
+            console.log('- departureTime:', departureTime);
+            console.log('- arrivalDate:', arrivalDate);
+            console.log('- arrivalTime:', arrivalTime);
+            console.log('- totalSeatsStr:', totalSeatsStr);
+            console.log('- priceStr:', priceStr);
+            
+            // Проверяем обязательные поля
+            if (!flightNumber) {
+                alert('Пожалуйста, введите номер рейса');
+                return;
+            }
+            if (!departureCity) {
+                alert('Пожалуйста, введите город отправления');
+                return;
+            }
+            if (!arrivalCity) {
+                alert('Пожалуйста, введите город прибытия');
+                return;
+            }
+            if (!departureDate) {
+                alert('Пожалуйста, выберите дату вылета');
+                return;
+            }
+            if (!departureTime) {
+                alert('Пожалуйста, выберите время вылета');
+                return;
+            }
+            if (!arrivalDate) {
+                alert('Пожалуйста, выберите дату прилета');
+                return;
+            }
+            if (!arrivalTime) {
+                alert('Пожалуйста, выберите время прилета');
+                return;
+            }
+            if (!totalSeatsStr) {
+                alert('Пожалуйста, введите количество мест');
+                return;
+            }
+            if (!priceStr) {
+                alert('Пожалуйста, введите цену билета');
+                return;
+            }
+            
+            // Конвертируем числа
+            const totalSeats = parseInt(totalSeatsStr);
+            const price = parseFloat(priceStr);
+            
+            console.log('Конвертированные значения:');
+            console.log('- totalSeats:', totalSeats, 'isNaN?', isNaN(totalSeats));
+            console.log('- price:', price, 'isNaN?', isNaN(price));
+            
+            if (isNaN(totalSeats) || totalSeats <= 0) {
+                alert('Количество мест должно быть положительным числом');
+                return;
+            }
+            
+            if (isNaN(price) || price <= 0) {
+                alert('Цена должна быть положительным числом');
+                return;
+            }
+            
+            // Формируем данные для отправки
+            const flightData = {
+                flight_number: flightNumber,
+                departure_city: departureCity,
+                arrival_city: arrivalCity,
+                departure_date: departureDate,
+                departure_time: departureTime,
+                arrival_date: arrivalDate,
+                arrival_time: arrivalTime,
+                total_seats: totalSeats,
+                price: price
+            };
+            
+            console.log('Данные для отправки:', flightData);
+
+            try {
+                console.log('Отправляем запрос на сервер...');
+                const response = await fetch('http://localhost:8000/company/flights', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify(flightData)
+                });
+
+                console.log('Ответ сервера:', response.status, response.statusText);
+
+                if (response.ok) {
+                    alert('Рейс успешно добавлен!');
+                    document.getElementById('flightForm').reset();
+                    loadStats();
+                } else {
+                    const errorText = await response.text();
+                    console.error('Ошибка сервера:', errorText);
+                    let errorMessage = 'Неизвестная ошибка';
+                    try {
+                        const error = JSON.parse(errorText);
+                        errorMessage = error.detail || JSON.stringify(error);
+                    } catch (e) {
+                        errorMessage = errorText;
+                    }
+                    alert('Ошибка: ' + errorMessage);
+                }
+            } catch (error) {
+                console.error('Ошибка сети:', error);
+                alert('Ошибка: ' + error.message);
+            }
+        });
+
+        // Загрузка рейсов
+        async function loadFlights() {
+            try {
+                const response = await fetch('http://localhost:8000/company/flights', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                allFlights = await response.json();
+                displayFlights(allFlights);
+                document.getElementById('filtersSection').classList.remove('hidden');
+            } catch (error) {
+                console.error('Ошибка загрузки рейсов:', error);
+            }
+        }
+
+        // Загрузка активных рейсов
+        async function loadActiveFlights() {
+            try {
+                const response = await fetch('http://localhost:8000/company/flights', {
+                    headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+                });
+                const flights = await response.json();
+                const activeFlights = flights.filter(flight => flight.is_active);
+                displayFlights(activeFlights);
+                document.getElementById('filtersSection').classList.remove('hidden');
+            } catch (error) {
+                console.error('Ошибка загрузки активных рейсов:', error);
+            }
+        }
+
+        // Отображение рейсов
+        function displayFlights(flights) {
+            const tableBody = document.getElementById('flightsTableBody');
+            tableBody.innerHTML = '';
+
+            flights.forEach(flight => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${flight.id}</td>
+                    <td>${flight.flight_number}</td>
+                    <td>${flight.departure_city} → ${flight.arrival_city}</td>
+                    <td>${flight.departure_date} ${flight.departure_time}</td>
+                    <td>${flight.available_seats}/${flight.total_seats}</td>
+                    <td>${flight.price} руб.</td>
+                    <td class="${flight.is_active ? 'status-active' : 'status-inactive'}">
+                        ${flight.is_active ? 'Активен' : 'Неактивен'}
+                    </td>
+                    <td>
+                        <button class="btn ${flight.is_active ? 'btn-danger' : 'btn'}" 
+                                onclick="toggleFlightStatus(${flight.id}, ${flight.is_active})">
+                            ${flight.is_active ? 'Деактивировать' : 'Активировать'}
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+
+            document.getElementById('flightsTable').classList.remove('hidden');
+        }
+
+        // Переключение статуса рейса
+        async function toggleFlightStatus(flightId, currentStatus) {
+            try {
+                const response = await fetch(`http://localhost:8000/company/flights/${flightId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: JSON.stringify({
+                        is_active: !currentStatus
+                    })
+                });
+
+                if (response.ok) {
+                    alert(`Рейс ${!currentStatus ? 'активирован' : 'деактивирован'}`);
+                    loadFlights();
+                    loadStats();
+                } else {
+                    const error = await response.json();
+                    alert('Ошибка: ' + error.detail);
+                }
+            } catch (error) {
+                alert('Ошибка: ' + error.message);
+            }
+        }
+
+        // Применение фильтров
+        function applyFilters() {
+            const cityFilter = document.getElementById('filterCity').value.toLowerCase();
+            const dateFilter = document.getElementById('filterDate').value;
+            const statusFilter = document.getElementById('filterStatus').value;
+
+            let filteredFlights = allFlights;
+
+            if (cityFilter) {
+                filteredFlights = filteredFlights.filter(flight => 
+                    flight.departure_city.toLowerCase().includes(cityFilter) ||
+                    flight.arrival_city.toLowerCase().includes(cityFilter)
+                );
+            }
+
+            if (dateFilter) {
+                filteredFlights = filteredFlights.filter(flight => 
+                    flight.departure_date === dateFilter
+                );
+            }
+
+            if (statusFilter) {
+                const isActive = statusFilter === 'active';
+                filteredFlights = filteredFlights.filter(flight => 
+                    flight.is_active === isActive
+                );
+            }
+
+            displayFlights(filteredFlights);
+        }
+
+        // Очистка фильтров
+        function clearFilters() {
+            document.getElementById('filterCity').value = '';
+            document.getElementById('filterDate').value = '';
+            document.getElementById('filterStatus').value = '';
+            displayFlights(allFlights);
+        }
+
+        // Выход
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>

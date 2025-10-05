@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Панель Пользователя</title>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            margin: 0; 
+            padding: 0; 
+            background-color: #f5f5f5;
+        }
+        .header { 
+            background: #007bff; 
+            color: white; 
+            padding: 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center;
+        }
+        .container { 
+            max-width: 1200px; 
+            margin: 20px auto; 
+            padding: 0 20px; 
+        }
+        .section { 
+            background: white; 
+            margin: 20px 0; 
+            padding: 20px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .form-group { 
+            margin: 15px 0; 
+        }
+        .form-group label { 
+            display: block; 
+            margin-bottom: 5px; 
+            font-weight: bold; 
+        }
+        .form-group input, .form-group select { 
+            width: 100%; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            box-sizing: border-box; 
+        }
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .btn { 
+            background: #007bff; 
+            color: white; 
+            padding: 10px 20px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            margin: 5px; 
+        }
+        .btn:hover { 
+            background: #0056b3; 
+        }
+        .btn-success { 
+            background: #28a745; 
+        }
+        .btn-success:hover { 
+            background: #218838; 
+        }
+        .btn-danger { 
+            background: #dc3545; 
+        }
+        .btn-danger:hover { 
+            background: #c82333; 
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-top: 15px; 
+        }
+        th, td { 
+            padding: 12px; 
+            text-align: left; 
+            border-bottom: 1px solid #ddd; 
+        }
+        th { 
+            background-color: #f8f9fa; 
+            font-weight: bold; 
+        }
+        .status-active { 
+            color: #28a745; 
+            font-weight: bold; 
+        }
+        .status-inactive { 
+            color: #dc3545; 
+            font-weight: bold; 
+        }
+        .hidden { 
+            display: none; 
+        }
+        .logout-btn { 
+            background: #dc3545; 
+            color: white; 
+            padding: 8px 16px; 
+            border: none; 
+            border-radius: 4px; 
+            cursor: pointer; 
+        }
+        .flight-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .flight-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .flight-route {
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+        .flight-price {
+            font-size: 1.5em;
+            color: #28a745;
+            font-weight: bold;
+        }
+        .flight-details {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            margin: 10px 0;
+        }
+        .flight-info {
+            text-align: center;
+        }
+        .flight-info strong {
+            display: block;
+            color: #666;
+            font-size: 0.9em;
+        }
+        .flight-info span {
+            font-size: 1.1em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Панель Пользователя</h1>
+        <div>
+            <span id="userEmail"></span>
+            <button class="logout-btn" onclick="logout()">Выйти</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Поиск рейсов -->
+        <div class="section">
+            <h2>Поиск рейсов</h2>
+            <form id="searchForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="fromCity">Откуда:</label>
+                        <input type="text" id="fromCity" placeholder="Город отправления" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="toCity">Куда:</label>
+                        <input type="text" id="toCity" placeholder="Город прибытия" required>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="departureDate">Дата вылета:</label>
+                        <input type="date" id="departureDate" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="passengers">Количество пассажиров:</label>
+                        <input type="number" id="passengers" min="1" value="1" required>
+                    </div>
+                </div>
+                <button type="submit" class="btn">Найти рейсы</button>
+            </form>
+        </div>
+
+        <!-- Результаты поиска -->
+        <div class="section hidden" id="searchResults">
+            <h2>Найденные рейсы</h2>
+            <div id="flightsList"></div>
+        </div>
+
+        <!-- Мои билеты -->
+        <div class="section">
+            <h2>Мои билеты</h2>
+            <button class="btn" onclick="loadMyTickets()">Загрузить мои билеты</button>
+            <div id="myTickets" class="hidden">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID билета</th>
+                            <th>Рейс</th>
+                            <th>Маршрут</th>
+                            <th>Дата/Время</th>
+                            <th>Цена</th>
+                            <th>Статус</th>
+                            <th>Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="ticketsTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentUser = null;
+        let searchResults = [];
+
+        // Проверка авторизации при загрузке
+        window.onload = async () => {
+            const token = localStorage.getItem('token');
+            if (!token) {
+                window.location.href = 'login.html';
+                return;
+            }
+
+            try {
+                const response = await fetch('http://localhost:8000/users/me', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (response.ok) {
+                    currentUser = await response.json();
+                    if (currentUser.role !== 'regular') {
+                        alert('Доступ запрещен. Требуются права обычного пользователя.');
+                        window.location.href = 'index.html';
+                        return;
+                    }
+                    document.getElementById('userEmail').textContent = currentUser.email;
+                } else {
+                    window.location.href = 'login.html';
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                window.location.href = 'login.html';
+            }
+        };
+
+        // Поиск рейсов
+        document.getElementById('searchForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const fromCity = document.getElementById('fromCity').value.trim();
+            const toCity = document.getElementById('toCity').value.trim();
+            const departureDate = document.getElementById('departureDate').value;
+            const passengers = parseInt(document.getElementById('passengers').value);
+
+            if (!fromCity || !toCity || !departureDate) {
+                alert('Пожалуйста, заполните все поля');
+                return;
+            }
+
+            try {
+                // Пока что используем заглушку - в реальном проекте здесь будет API поиска
+                const mockFlights = [
+                    {
+                        id: 1,
+                        flight_number: 'SU123',
+                        departure_city: fromCity,
+                        arrival_city: toCity,
+                        departure_date: departureDate,
+                        departure_time: '10:00',
+                        arrival_time: '12:00',
+                        price: 5000,
+                        available_seats: 50,
+                        total_seats: 100,
+                        company_name: 'Аэрофлот'
+                    },
+                    {
+                        id: 2,
+                        flight_number: 'S7456',
+                        departure_city: fromCity,
+                        arrival_city: toCity,
+                        departure_date: departureDate,
+                        departure_time: '14:00',
+                        arrival_time: '16:00',
+                        price: 4500,
+                        available_seats: 30,
+                        total_seats: 80,
+                        company_name: 'S7 Airlines'
+                    }
+                ];
+
+                searchResults = mockFlights;
+                displaySearchResults(mockFlights);
+                document.getElementById('searchResults').classList.remove('hidden');
+            } catch (error) {
+                console.error('Ошибка поиска:', error);
+                alert('Ошибка при поиске рейсов');
+            }
+        });
+
+        // Отображение результатов поиска
+        function displaySearchResults(flights) {
+            const flightsList = document.getElementById('flightsList');
+            flightsList.innerHTML = '';
+
+            flights.forEach(flight => {
+                const flightCard = document.createElement('div');
+                flightCard.className = 'flight-card';
+                flightCard.innerHTML = `
+                    <div class="flight-header">
+                        <div class="flight-route">${flight.departure_city} → ${flight.arrival_city}</div>
+                        <div class="flight-price">${flight.price} ₽</div>
+                    </div>
+                    <div class="flight-details">
+                        <div class="flight-info">
+                            <strong>Рейс</strong>
+                            <span>${flight.flight_number}</span>
+                        </div>
+                        <div class="flight-info">
+                            <strong>Время вылета</strong>
+                            <span>${flight.departure_time}</span>
+                        </div>
+                        <div class="flight-info">
+                            <strong>Время прилета</strong>
+                            <span>${flight.arrival_time}</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 15px;">
+                        <button class="btn btn-success" onclick="buyTicket(${flight.id})">
+                            Купить билет за ${flight.price} ₽
+                        </button>
+                    </div>
+                `;
+                flightsList.appendChild(flightCard);
+            });
+        }
+
+        // Покупка билета
+        async function buyTicket(flightId) {
+            const flight = searchResults.find(f => f.id === flightId);
+            if (!flight) {
+                alert('Рейс не найден');
+                return;
+            }
+
+            if (confirm(`Подтвердить покупку билета на рейс ${flight.flight_number} за ${flight.price} ₽?`)) {
+                try {
+                    // Здесь будет API для покупки билета
+                    alert(`Билет на рейс ${flight.flight_number} успешно куплен! ID билета: ${Date.now()}`);
+                    
+                    // Обновляем доступные места
+                    flight.available_seats -= 1;
+                    displaySearchResults(searchResults);
+                } catch (error) {
+                    console.error('Ошибка покупки:', error);
+                    alert('Ошибка при покупке билета');
+                }
+            }
+        }
+
+        // Загрузка моих билетов
+        async function loadMyTickets() {
+            try {
+                // Здесь будет API для загрузки билетов пользователя
+                const mockTickets = [
+                    {
+                        id: 1,
+                        flight_number: 'SU123',
+                        route: 'Москва → Санкт-Петербург',
+                        date_time: '2025-10-06 10:00',
+                        price: 5000,
+                        status: 'Активен'
+                    }
+                ];
+
+                displayMyTickets(mockTickets);
+                document.getElementById('myTickets').classList.remove('hidden');
+            } catch (error) {
+                console.error('Ошибка загрузки билетов:', error);
+                alert('Ошибка при загрузке билетов');
+            }
+        }
+
+        // Отображение моих билетов
+        function displayMyTickets(tickets) {
+            const tableBody = document.getElementById('ticketsTableBody');
+            tableBody.innerHTML = '';
+
+            tickets.forEach(ticket => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${ticket.id}</td>
+                    <td>${ticket.flight_number}</td>
+                    <td>${ticket.route}</td>
+                    <td>${ticket.date_time}</td>
+                    <td>${ticket.price} ₽</td>
+                    <td class="status-active">${ticket.status}</td>
+                    <td>
+                        <button class="btn btn-danger" onclick="cancelTicket(${ticket.id})">
+                            Отменить
+                        </button>
+                    </td>
+                `;
+                tableBody.appendChild(row);
+            });
+        }
+
+        // Отмена билета
+        async function cancelTicket(ticketId) {
+            if (confirm('Вы уверены, что хотите отменить этот билет?')) {
+                try {
+                    // Здесь будет API для отмены билета
+                    alert('Билет отменен');
+                    loadMyTickets();
+                } catch (error) {
+                    console.error('Ошибка отмены:', error);
+                    alert('Ошибка при отмене билета');
+                }
+            }
+        }
+
+        // Выход
+        function logout() {
+            localStorage.removeItem('token');
+            window.location.href = 'index.html';
+        }
+    </script>
+</body>
+</html>
