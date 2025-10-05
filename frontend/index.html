@@ -1,65 +1,151 @@
 <!DOCTYPE html>
 <html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Сервис по продаже авиабилетов</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; }
-        header { background: #007bff; color: white; padding: 10px; display: flex; justify-content: space-between; align-items: center; }
-        nav a { color: white; margin-left: 10px; text-decoration: none; }
-        .slider { height: 200px; background: #f0f0f0; text-align: center; padding: 50px; }
-        .search-form { margin: 20px; text-align: center; }
-        .offers { margin: 20px; }
-        .buy-btn { background: #28a745; color: white; padding: 10px 20px; border: none; cursor: pointer; }
+      body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+      }
+      header {
+        background: #007bff;
+        color: white;
+        padding: 10px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+      nav a {
+        color: white;
+        margin-left: 10px;
+        text-decoration: none;
+      }
+      .slider {
+        height: 300px;
+        background: #f0f0f0;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+      }
+      .slider img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+      }
+      .slider-content {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        color: white;
+        text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.7);
+        font-size: 24px;
+        font-weight: bold;
+      }
+      .search-form {
+        margin: 20px;
+        text-align: center;
+      }
+      .offers {
+        margin: 20px;
+      }
+      .buy-btn {
+        background: #28a745;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        cursor: pointer;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+      .buy-btn:hover {
+        background: #218838;
+      }
     </style>
-</head>
-<body>
+  </head>
+  <body>
     <header>
-        <h1>Добро пожаловать в сервис по продаже авиабилетов!</h1>
-        <nav>
-            <a href="login.html">Войти</a>
-            <a href="signup.html">Зарегистрироваться</a>
-        </nav>
+      <h1>Добро пожаловать в сервис по продаже авиабилетов!</h1>
+      <nav>
+        <a href="login.html">Войти</a>
+        <a href="signup.html">Зарегистрироваться</a>
+      </nav>
     </header>
-    
+
     <div class="slider" id="slider">
-        <p>Баннер 1: Специальное предложение!</p>
+      <img
+        src="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-1.2.1&auto=format&fit=crop&w=1350&q=80"
+        alt="Специальное предложение"
+      />
+      <div class="slider-content">
+        <p>Специальное предложение!</p>
+      </div>
     </div>
-    
-    <div class="offers">
-        <h2>Горячие предложения</h2>
-        <p>Рейс Москва - Санкт-Петербург за 5000 руб.</p>
-    </div>
-    
+
     <div class="search-form">
-        <h2>Начните поиск билетов</h2>
-        <p>Для покупки билетов необходимо войти в систему</p>
-        <button type="button" class="buy-btn" onclick="handleBuy()">Купить билеты</button>
+      <h2>Начните поиск билетов</h2>
+      <p>Для покупки билетов необходимо войти в систему</p>
+      <button type="button" class="buy-btn" onclick="handleBuy()">
+        Купить билеты
+      </button>
     </div>
 
     <script>
-        const banners = ['Баннер 1: Специальное предложение!', 'Баннер 2: Скидки на международные рейсы!', 'Баннер 3: Летайте с комфортом!'];
-        let currentBanner = 0;
-        const slider = document.getElementById('slider');
-        setInterval(() => {
-            currentBanner = (currentBanner + 1) % banners.length;
-            slider.innerHTML = `<p>${banners[currentBanner]}</p>`;
-        }, 3000);
+      const banners = [
+        {
+          image: "images/jet1.avif",
+          text: "Специальное предложение!",
+        },
+        {
+          image: "images/jet2.jpeg",
+          text: "Скидки на международные рейсы!",
+        },
+        {
+          image: "images/jet3.avif",
+          text: "Летайте с комфортом!",
+        },
+      ];
 
-        function handleBuy() {
-            if (localStorage.getItem('token')) {
-                window.location.href = 'user_dashboard.html';
-            } else {
-                window.location.href = 'login.html';
-            }
+      let currentBanner = 0;
+      const slider = document.getElementById("slider");
+
+      // Функция для предзагрузки изображений
+      function preloadImages() {
+        banners.forEach((banner) => {
+          const img = new Image();
+          img.src = banner.image;
+        });
+      }
+
+      // Предзагрузка изображений при загрузке страницы
+      window.addEventListener("load", preloadImages);
+
+      setInterval(() => {
+        currentBanner = (currentBanner + 1) % banners.length;
+        slider.innerHTML = `
+          <img src="${banners[currentBanner].image}" alt="${banners[currentBanner].text}" />
+          <div class="slider-content">
+            <p>${banners[currentBanner].text}</p>
+          </div>
+        `;
+      }, 3000);
+
+      function handleBuy() {
+        if (localStorage.getItem("token")) {
+          window.location.href = "user_dashboard.html";
+        } else {
+          window.location.href = "login.html";
         }
+      }
 
-        window.onload = () => {
-            if (localStorage.getItem('token')) {
-                // Можно добавить fetch /users/me для роли и редиректа
-            }
-        };
+      window.onload = () => {
+        if (localStorage.getItem("token")) {
+          // Можно добавить fetch /users/me для роли и редиректа
+        }
+      };
     </script>
-</body>
+  </body>
 </html>
