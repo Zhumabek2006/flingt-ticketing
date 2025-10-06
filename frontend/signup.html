@@ -5,40 +5,50 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Регистрация</title>
     <style>
-      body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        margin-top: 50px;
-      }
-      form {
-        max-width: 300px;
-        margin: auto;
-      }
-      input {
-        display: block;
-        margin: 10px auto;
-        padding: 10px;
-        width: 100%;
-      }
-      button {
-        background: #007bff;
-        color: white;
-        padding: 10px;
-        border: none;
-        cursor: pointer;
-      }
+      body { font-family: Arial, sans-serif; margin: 0; background: linear-gradient(135deg, #eef2f3 0%, #fdfbfb 100%); }
+      .center { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+      .card { width: 100%; max-width: 420px; background: #fff; border-radius: 12px; box-shadow: 0 10px 30px rgba(0,0,0,0.08); padding: 26px 22px; animation: pop .25s ease; }
+      h1 { margin: 0 0 14px; text-align: center; }
+      .subtitle { text-align: center; margin-bottom: 18px; color: #666; }
+      form { width: 100%; }
+      .field { margin: 12px 0; }
+      .field input { width: 100%; padding: 12px 12px; border: 1px solid #e2e2e2; border-radius: 8px; box-sizing: border-box; outline: none; transition: box-shadow .2s ease, border-color .2s ease; }
+      .field input:focus { border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,.12); }
+      .row { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; }
+      .btn { width: 100%; background: #007bff; color: #fff; border: none; border-radius: 8px; padding: 12px; cursor: pointer; transition: transform .08s ease, box-shadow .2s ease, background .2s ease; }
+      .btn:hover { background: #0069d9; }
+      .btn:active { transform: translateY(1px); }
+      a { color: #007bff; text-decoration: none; }
+      a:hover { text-decoration: underline; }
+      /* Toasts */
+      .toast-container { position: fixed; top: 20px; right: 20px; display: flex; flex-direction: column; gap: 10px; z-index: 9999; }
+      .toast { min-width: 260px; max-width: 360px; background: #fff; border-left: 6px solid #28a745; box-shadow: 0 8px 24px rgba(0,0,0,0.12); border-radius: 8px; padding: 12px 14px; animation: slideIn .35s ease, fadeOut .3s ease 4.2s forwards; }
+      .toast.error { border-left-color: #dc3545; }
+      .toast .title { font-weight: 700; margin-bottom: 4px; }
+      .toast .msg { color: #444; }
+      @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      @keyframes fadeOut { to { opacity: 0; transform: translateY(-6px); } }
+      @keyframes pop { from { transform: scale(.98); opacity: .6; } to { transform: scale(1); opacity: 1; } }
     </style>
   </head>
   <body>
-    <h1>Регистрация пользователя</h1>
-    <form id="signupForm">
-      <input type="text" id="first_name" placeholder="Имя" />
-      <input type="text" id="last_name" placeholder="Фамилия" />
-      <input type="email" id="email" placeholder="Email" required />
-      <input type="password" id="password" placeholder="Пароль" required />
-      <button type="submit">Зарегистрироваться</button>
-    </form>
-    <p>Уже есть аккаунт? <a href="login.html">Войти</a></p>
+    <div class="toast-container" id="toastContainer"></div>
+    <div class="center">
+      <div class="card">
+        <h1>Создать аккаунт</h1>
+        <div class="subtitle">Заполните данные для регистрации</div>
+        <form id="signupForm">
+          <div class="field"><input type="text" id="first_name" placeholder="Имя" /></div>
+          <div class="field"><input type="text" id="last_name" placeholder="Фамилия" /></div>
+          <div class="field"><input type="email" id="email" placeholder="Email" required /></div>
+          <div class="field"><input type="password" id="password" placeholder="Пароль" required /></div>
+          <button type="submit" class="btn" id="signupBtn">Зарегистрироваться</button>
+        </form>
+        <div class="row" style="justify-content:center;margin-top:12px;">
+          <span>Уже есть аккаунт? <a href="login.html">Войти</a></span>
+        </div>
+      </div>
+    </div>
 
     <script>
       document
@@ -68,15 +78,24 @@
             );
             const data = await response.json();
             if (response.ok) {
-              alert("Регистрация успешна! Теперь войдите.");
+              toast('Успешно', 'Аккаунт создан. Теперь войдите.', 'success');
               window.location.href = "login.html";
             } else {
-              alert("Ошибка: " + data.detail);
+              toast('Ошибка', data.detail || 'Не удалось зарегистрироваться', 'error');
             }
           } catch (error) {
-            alert("Ошибка: " + error);
+            toast('Ошибка', String(error), 'error');
           }
         });
+
+      function toast(title, message, type = 'success') {
+        const container = document.getElementById('toastContainer');
+        const el = document.createElement('div');
+        el.className = 'toast' + (type === 'error' ? ' error' : '');
+        el.innerHTML = `<div class="title">${title}</div><div class="msg">${message}</div>`;
+        container.appendChild(el);
+        setTimeout(() => { el.remove(); }, 4600);
+      }
     </script>
   </body>
 </html>
