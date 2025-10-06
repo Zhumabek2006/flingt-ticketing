@@ -83,3 +83,5 @@ project/
 - **Backend won't start**: Make sure port 8000 is not in use
 - **CORS errors**: The backend is configured to allow requests from localhost and file:// protocols
 - **Database issues**: The SQLite database will be created automatically on first run
+ 
+ youtube: https://youtu.be/N5QJgSCeDzs
